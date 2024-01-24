@@ -94,8 +94,8 @@ def NN_model_updown_sample(net_info,image_X,image_Y):
   # model
   mdl=tf.keras.Model(inputs=[Input1],outputs=[prediction])
   mdl.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=net_info.Lrate),
-              loss=tf.keras.losses.MeanAbsoluteError(),
-              metrics=['accuracy', tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.RootMeanSquaredError()]) #MeanSquaredError()
+              loss=tf.keras.losses.MeanSquaredError(),
+              metrics=['accuracy', tf.keras.metrics.MeanAbsoluteError(), tf.keras.metrics.RootMeanSquaredError()]) #MeanSquaredError()MeanAbsoluteError(),
   mdl.summary()
   return mdl  
 #------------------------------------------------------------------
@@ -142,15 +142,16 @@ def LOO(net_info,X,Y):
   Avg=np.mean(err)
   print('Avg leave one out:',Avg)  
 #------------------------------------------------------------------
-def Validation(X_tarin, Y_train, X_test,Y_test, f_name, net_info):
+def Validation(X_train, Y_train, X_test,Y_test, f_name, net_info):
     
     X_test=np.reshape(X_test,(1,image_X,image_Y,3,1))
     Y_test=np.reshape(Y_test,(1,image_X,image_Y,3,1))
-    net_info=net(3,16,2,'relu','relu',0.7,0.005)
+    net_info=net(3,16,2,'relu','relu',0.7,0.001)
     mdl=NN_model_updown_sample(net_info,image_X,image_Y)
  
     #------------------Fit Model
-    hist=mdl.fit(X_Train,Y_Train,epochs=2,verbose=1)
+    hist=mdl.fit(X_train,Y_train,epochs=200,verbose=1)
+    
     h=hist.history
     fig1 = plt.pyplot.figure(figsize=(12, 4))
     plt.pyplot.plot(h['loss'])
@@ -160,13 +161,15 @@ def Validation(X_tarin, Y_train, X_test,Y_test, f_name, net_info):
     Y_pred=mdl.predict(X_test)
     print("shape Ytest:", np.shape(Y_test))
     print("shape Ypred", np.shape(Y_pred))
+    Results= mdl.evaluate(X_test,Y_test)
+    print("RESLUT=",  Results)
     
     RMS_err= np.sqrt(np.mean((Y_test-Y_pred)**2))
     MA_err= np.mean(np.abs(Y_test-Y_pred))
     Acc=0
     for i in range(image_X):
          for j in range(image_Y):
-             if (np.abs(Y_pred[0,i,j,0]-Y_test[0,i,j,0])<0.001):
+             if (np.abs(Y_pred[0,i,j,0]-Y_test[0,i,j,0])<0.1):
                  Acc = Acc +1
                  
     Acc = Acc/(image_X*image_Y)
@@ -189,12 +192,12 @@ def Validation(X_tarin, Y_train, X_test,Y_test, f_name, net_info):
     Y_pred=np.reshape(Y_pred,(image_X,image_Y,3))
     ax.imshow(Y_pred)
     ax.set_title('prediction')
-    f_name1="prediction_test_"+f_name+'.jpg'
+    #f_name1="prediction_test_"+f_name+'.jpg'
     
-    m1=np.max(Y_pred)
-    Y_pred=Y_pred/m1
-    Y_pred=Y_pred*255.0
-    io.imsave(fname=f_name1, arr=Y_pred)
+    #m1=np.max(Y_pred)
+    #Y_pred=Y_pred/m1
+    #Y_pred=Y_pred*255.0
+    #io.imsave(fname=f_name1, arr=Y_pred)
     print("hi")
     
 #------------------------------------------------------------------
@@ -214,7 +217,7 @@ for i in range(4):
   f_name1=f_name+str(Years[i])+'.jpg'
   img = io.imread(f_name1)
   img=img/255.0
-  #img = tf.image.crop_to_bounding_box(img,0,320,656,600)
+  #img = tf.image.crop_to_bounding_box(img,80,65,880, 680)
   #plt.pyplot.imshow(img)
   #print(f_name1)
   #print(np.shape(img))
@@ -226,7 +229,7 @@ for i in range(4):
   f_name2=f_name+str(Years[i+1])+'.jpg'
   img=io.imread(f_name2)#plt.image.imread(f_name2)
   img=img/255.0
-  #img = tf.image.crop_to_bounding_box(img,0,320,656,600)
+ # img = tf.image.crop_to_bounding_box(img,80,65,880,680)
   Y_Train.append(img)
   #print(f_name2)
   #print(np.shape(img))
@@ -254,11 +257,16 @@ Y_Train=np.array(Y_Train)
 Y_Train=np.reshape(Y_Train,(4,image_X,image_Y,3,1))
 #-----------------------------------------------------------------
 # Validation
-net_info=net(3,16,2,'relu','relu',0.7,0.005)
+net_info=net(3,16,2,'relu','relu',0.7,0.001)
 # validate train with 2006 to 2014 and test with 2018
 Validation(X_Train[0:3], Y_Train[0:3], X_Train[3], Y_Train[3], 'Image_2018', net_info)
+pdb.set_trace()
+
+# validate train with 2006 to 2010 and test with 2014
+#Validation(X_Train[0:2], Y_Train[0:2], X_Train[2], Y_Train[2], 'Image_2014', net_info)
 
 pdb.set_trace()
+
 
 #-Leave one out error
 #print('***********************Setp2:Leave one out error****************************')
@@ -269,7 +277,7 @@ pdb.set_trace()
 mdl=NN_model_updown_sample(net_info,image_X,image_Y)
 pdb.set_trace()
 #------------------Fit Model
-hist=mdl.fit(X_Train,Y_Train,epochs=60,verbose=1)
+hist=mdl.fit(X_Train,Y_Train,epochs=200,verbose=1)
 h=hist.history
 fig1 = plt.pyplot.figure(figsize=(12, 4))
 plt.pyplot.plot(h['loss'])
@@ -286,7 +294,7 @@ print(np.shape(img))
 X_Test=[]
 img=io.imread('IM_2021.jpg')#plt.image.imread('IM_2021.jpg')
 img=img/255.0
-img = tf.image.crop_to_bounding_box(img,0,320,656,600)
+#img = tf.image.crop_to_bounding_box(img,80,65,880,680)
 X_Test.append(img)
 X_Test=np.array(X_Test)
 X_Test=np.reshape(X_Test,(1,image_X,image_Y,3,1))
@@ -327,7 +335,7 @@ ax=fig.add_subplot(1,4,2)
 blue_red1 = LinearSegmentedColormap('BlueRed1', cdict1)'''
 #--------------------
 ax.imshow(Y_Test1)
-ax.set_title('Predicted Bluered image 2025')
+ax.set_title('Predicted Blue-red image 2025')
 
 ax=fig.add_subplot(1,4,3)
 ax.imshow(Y_Test1)
