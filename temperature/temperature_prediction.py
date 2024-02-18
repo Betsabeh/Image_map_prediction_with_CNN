@@ -12,12 +12,19 @@ import seaborn as sns
 import math
 
 
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import minmax_scale
+
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.svm import SVR
+import xgboost
+from xgboost import XGBRegressor
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.neighbors import KNeighborsRegressor
+
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
-import xgboost
+
 from sklearn.metrics import r2_score 
 
 import shap
@@ -33,6 +40,7 @@ def create_dataset(land_use_option):
     years = [2006,2010, 2014, 2018, 2021]
     
     num =370* len(years)
+    num_sample_per_years=[]
     X= np.zeros(shape=(num,8))
     Y= np.zeros(shape= (num,1))
     low = 0
@@ -41,11 +49,12 @@ def create_dataset(land_use_option):
     for year in years:
         f_name = land_use_option + str(year) +".xlsx"
         Data = pd.read_excel(f_name)
-        print(Data.info())
+        #print(Data.info())
         #sns.pairplot(Data, y_vars='LST')
         num = len(Data)
-        print("len Data:", num)
-        print("-------------------",year,"------------------")
+        num_sample_per_years.append(num)
+        # print("len Data:", num)
+        #print("-------------------",year,"------------------")
         for i, name in enumerate(Factors):
             if name =="year":
                 X[low:low+num, i] =year
@@ -56,13 +65,15 @@ def create_dataset(land_use_option):
         
         Y[low:low+num,0] = Data["LST"]
         low = low+num
-    print('---------------------------------------------------')    
+    #print('---------------------------------------------------')    
     X = X[0:low,:]
     Y = Y[0:low]
     X = np.array(X)
     X = np.round(X,2)
-    Y = np.array(np.round(Y,2))
-    return X,Y
+    Y = (np.array(np.round(Y,2)))
+    #X = minmax_scale(X, axis=1)
+    
+    return X,Y, num_sample_per_years
 
     
 def correlation (X,Y):
@@ -96,19 +107,46 @@ def create_model(model_name, hparam):
         model = RandomForestRegressor(n_estimators= hparam["n_estimators"],
                                       max_depth= hparam["max_depth"],
                                       criterion= hparam["criterion"])
+    if model_name == 'SVM':
+        model =SVR(kernel=hparam['kernel'])
+        
     if  model_name == 'NN':
         model = NN_model(hparam)
+        
+    if model_name == 'xgboost':
+        model = XGBRegressor(objective ='reg:squarederror',
+                             n_estimators=hparam["n_estimators"], 
+                             max_depth=hparam["max_depth"]
+                             , eta=hparam["eta"], subsample=hparam["subsample"])
+    if model_name == 'Dtree':
+        model = DecisionTreeRegressor(max_depth= hparam["max_depth"])
+        
+    if model_name == 'KNN':
+        model =  KNeighborsRegressor(n_neighbors = hparam["n_neighbors"])
+
     
     return model    
 
 
 def hparam_setting(model_name):
+    
+    if model_name == "xgboost":
+        model_hparams={"n_estimators":500,  "max_depth":4, "eta":0.1, "subsample":0.8}
+                       
     if model_name == "RandomForest":
-        model_hparams={"n_estimators":100,"max_depth": 6,"criterion" : "squared_error"}
+        model_hparams={"n_estimators":300,"max_depth": 8,"criterion" : "squared_error"}
+        
+    if model_name == 'Dtree':
+        model_hparams={"max_depth": 8}
+    
     if model_name =="NN":
-        model_hparams ={"input": 8, 'num_layers' :4, "num_nodes":64}
-        
-        
+        model_hparams ={"input": 8, 'num_layers' :5, "num_nodes":16}
+    
+    if model_name == 'SVM':
+        model_hparams={"kernel":"rbf"}
+     
+    if model_name == 'KNN':
+        model_hparams = {"n_neighbors":5}
         
     
     return model_hparams
@@ -120,6 +158,7 @@ def train_model(model_name, model, X, Y):
         hist= hist.history
         fig3= plt.figure(figsize=(12,6))
         plt.plot(hist['loss'])
+        plt.show()
         
         
     else:
@@ -144,7 +183,7 @@ def NN_model(hparam):
     
     for i in range(hparam['num_layers']):
         model.add(tf.keras.layers.Dense(units=num_hidden_units/(2**i), activation='relu'))
-        #model.add(tf.keras.layers.Dropout(0.2))
+        #model.add(tf.keras.layers.Dropout(0.5))
         
     
     model.add(tf.keras.layers.Dense(units=1, activation = None))    
@@ -178,10 +217,10 @@ def cal_AAPRE(Y,P):
 def cal_Rsquare(Y,P):
     #  Yi represents the actual values.
     #  Pi represents the predicted values.
-    Avg_Y=np.mean(Y)
-    SSR= np.sum((Y-P)**2)
-    SST=np.sum((Y-Avg_Y)**2)
-    R=1-(SSR/SST)
+    #Avg_Y=np.mean(Y)
+    #SSR= np.sum((Y-P)**2)
+    #SST=np.sum((Y-Avg_Y)**2)
+    #R=1-(SSR/SST)
     R=r2_score(Y, P) 
     return R
        
@@ -197,6 +236,7 @@ def cross_validation(X,Y,num_folds, model_name):
         Y_Train = Y[index_train]
         X_Test = X[index_test]
         Y_Test = Y[index_test]
+       # print(X_Test[:,7])
         
         model_obj = ML_models(model_name, model_hparams)      
         model = model_obj.model
@@ -211,7 +251,7 @@ def cross_validation(X,Y,num_folds, model_name):
         All_AAPRE.append(cal_AAPRE(Y_Test,Y_pred_Test))
         All_R.append(cal_Rsquare(Y_Test,Y_pred_Test))
         
-        #visulaization(Y_Test, Y_pred_Test)
+        visulaization(Y_Test, Y_pred_Test)
         
     
     for i in range(num_folds):
@@ -222,9 +262,45 @@ def cross_validation(X,Y,num_folds, model_name):
         print("R=",All_R[i])
         
     print('--------------------------------------------------------------')   
-    print("AVG Teset RMSE ", np.mean(ALL_RMSE_Test), "+/- =", np.std(ALL_RMSE_Test) ) 
-    print("AVG AAPRE", np.mean(All_AAPRE)) 
-    print("AVG AAPRE", np.mean(All_R)) 
+    print("AVG Train RMSE =", np.mean(ALL_RMSE_Train), "+/- =", np.std(ALL_RMSE_Train))
+    print("AVG Test RMSE =", np.mean(ALL_RMSE_Test), "+/- =", np.std(ALL_RMSE_Test) ) 
+    print("AVG Test AAPRE=", np.mean(All_AAPRE)) 
+    print("AVG Test R=", np.mean(All_R)) 
+    
+ 
+def train_test_2021(X,Y,num_sample_per_years, model_name):
+   
+    num_samples= len(Y)
+    num_test_samples = num_sample_per_years[-1]
+    print(num_test_samples)
+    num_train_samples = num_samples - num_test_samples
+    X_Train = X[0:num_train_samples,:]
+    Y_Train = Y[0:num_train_samples]
+    X_Test = X[num_train_samples+1:num_samples,:]
+    Y_Test = Y[num_train_samples+1:num_samples]
+    print(np.unique(X_Test[:,-1]))
+    print(np.unique(X_Train[:,-1]))
+    
+    model_hparams = hparam_setting(model_name)    
+    model_obj = ML_models(model_name, model_hparams)      
+    model = model_obj.model
+    model = train_model(model_name,model, X_Train,Y_Train)  
+        
+    Y_pred_Train, MSE, RMSE_Train = test_model(model, X_Train,Y_Train)
+      
+    Y_pred_Test, MSE, RMSE_Test = test_model(model, X_Test,Y_Test)
+        
+        
+    All_AAPRE =cal_AAPRE(Y_Test,Y_pred_Test)
+    All_R=cal_Rsquare(Y_Test,Y_pred_Test)
+        
+    visulaization(Y_Test, Y_pred_Test)
+    print("--------------------------------------------------------------")
+    print("----------------Result test 2021--------------------------------------")
+    print("RMSE  Train=", RMSE_Train)
+    print("RMSE  Test=", RMSE_Test)    
+    print("AAPRE Test=", All_AAPRE)    
+    print("R Test=", All_R)    
     
     
     
@@ -270,13 +346,21 @@ def feature_importance(X,Y, model_name):
     
     
     
-
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 #def main():
-Factors= ["ed","frac","lpi","lsi","pland", "x", "y", "year"]    
-X,Y = create_dataset('allb')#buildup
-print("hi")
-model_names= ["RandomForest", "NN"]
-#feature_importance(X,Y, model_name =model_names[0])
+Factors= ["ed","frac","lpi","lsi","pland", "x", "y", "year"]   
+# 1- create dataset 
+##buildup =allb
+configuration_mode =['allb','allv','alls'] 
+X,Y, num_sample_per_years = create_dataset(configuration_mode[2])
 
+# 2- Cross-validation
+model_names= ["RandomForest", "NN","SVM","xgboost","Dtree", "KNN"]
 cross_validation(X, Y, num_folds =5 , model_name =model_names[0])
+
+# 3- Test 2021
+train_test_2021(X,Y,num_sample_per_years, model_names[0])
+
+#feature_importance(X,Y, model_name =model_names[0])
 #correlation(X, Y)    
