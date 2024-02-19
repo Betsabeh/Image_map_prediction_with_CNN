@@ -17,10 +17,11 @@ from sklearn.preprocessing import MinMaxScaler
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
-import xgboost
+import xgboost as xg
 from xgboost import XGBRegressor
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn import tree
+from sklearn import neighbors
+from sklearn.ensemble import AdaBoostRegressor
 
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
@@ -31,6 +32,7 @@ from sklearn.metrics import r2_score
 import shap
 
 import tensorflow as tf
+from keras.regularizers import l2
 
 
 
@@ -173,7 +175,7 @@ class ML_models():
 #------------------------------------------------------------------------------    
 def train_model(model_name, model, X, Y):
     if model_name =="NN":
-        hist =model.fit(X,Y, epochs = 1200, batch_size=256)
+        hist =model.fit(X,Y, epochs = 1500, batch_size=256)
         hist= hist.history
         #print(np.shape(hist['loss']))
         myfig= plt.figure(figsize=(12,6))
@@ -219,7 +221,7 @@ def NN_model(hparam):
         
     
     model.add(tf.keras.layers.Dense(units=1, activation = None))    
-    model.compile(optimizer =tf.keras.optimizers.Adam(learning_rate=0.001), 
+    model.compile(optimizer =tf.keras.optimizers.Adam(learning_rate=0.0005), 
                   loss = tf.losses.MSE, 
                   metrics= ["mse", tf.metrics.RootMeanSquaredError()])     
     
@@ -293,7 +295,7 @@ def hparam_setting(model_name):
                        "min_samples_split":10}
     
     if model_name =="NN":
-        model_hparams ={"input": input_dim, 'num_layers' :3, "num_nodes":128}
+        model_hparams ={"input": input_dim, 'num_layers' :5, "num_nodes":64}
         
     if model_name == 'KNN':
         model_hparams ={'n_neighbors':15}
@@ -377,6 +379,7 @@ def cross_validation(X,Y,num_folds, model_name):
         model_obj = ML_models(model_name, model_hparams)      
         model = model_obj.model
         model = train_model(model_name,model, X_Train,Y_Train)  
+        print("len Train", len(Y_Train))
         
         Y_pred_Train, MSE, RMSE_Train = test_model(model, X_Train,Y_Train)
         ALL_RMSE_Train.append(RMSE_Train)
@@ -418,8 +421,9 @@ def train_test_2021(X,Y,num_sample_per_years, model_name):
     Y_Train = Y[0:num_train_samples]
     X_Test = X[num_train_samples+1:num_samples,:]
     Y_Test = Y[num_train_samples+1:num_samples]
-    print(np.unique(X_Test[:,-1]))
-    print(np.unique(X_Train[:,-1]))
+    #print(np.unique(X_Test[:,-1]))
+    #print(np.unique(X_Train[:,-1]))
+    print("len Train", len(Y_Train))
     
     model_hparams = hparam_setting(model_name)    
     model_obj = ML_models(model_name, model_hparams)      
@@ -429,7 +433,8 @@ def train_test_2021(X,Y,num_sample_per_years, model_name):
     Y_pred_Train, MSE, RMSE_Train = test_model(model, X_Train,Y_Train)
       
     Y_pred_Test, MSE, RMSE_Test = test_model(model, X_Test,Y_Test)
-        
+    
+    CI = cal_cindex(Y_Test, Y_pred_Test)    
         
     All_AAPRE =cal_AAPRE(Y_Test,Y_pred_Test)
     All_R=cal_Rsquare(Y_Test,Y_pred_Test)
@@ -439,6 +444,7 @@ def train_test_2021(X,Y,num_sample_per_years, model_name):
     print("----------------Result test 2021------------------------------")
     print("RMSE  Train=", RMSE_Train)
     print("RMSE  Test=", RMSE_Test)    
+    print("CI Test=", CI)
     print("AAPRE Test=", All_AAPRE)    
     print("R Test=", All_R)    
     
@@ -474,6 +480,14 @@ def feature_importance(X,Y, model_name):
         
         shap_values = explainer.shap_values(X_Train, nsamples =5)
         fig1 = plt.Figure(figsize= (12,6))
+        shap.summary_plot(shap_values, X_Train, plot_type= "bar", feature_names = Factors)
+        print("hi first shap")
+
+        fig2 = plt.Figure(figsize=(12,6))
+        shap.summary_plot(shap_values, X_Train, feature_names= Factors)
+        print("hi end")
+    
+    
 
     
     
@@ -489,19 +503,11 @@ configuration_mode =['allb','allv','alls']
 X,Y, num_sample_per_years = create_dataset(configuration_mode[0])
 
 # 2- Cross validation
-model_names= ["RandomForest", "NN","SVM","xgboost","Dtree", "KNN"]
-cross_validation(X, Y, num_folds =5 , model_name =model_names[0])
+model_names= ["RandomForest", "NN","SVR","xgboost","DTree", "KNN","Adaboost"]
+cross_validation(X, Y, num_folds =5 , model_name =model_names[2])
 
 # 3- Test 2021
-        shap.summary_plot(shap_values, X_Train, plot_type= "bar", feature_names = Factors)
-        print("hi first shap")
-
-        fig2 = plt.Figure(figsize=(12,6))
-        shap.summary_plot(shap_values, X_Train, feature_names= Factors)
-        print("hi end")
-    
-    
-train_test_2021(X,Y,num_sample_per_years, model_names[0])
+train_test_2021(X,Y,num_sample_per_years, model_names[2])
 
 #feature_importance(X,Y, model_name =model_names[0])
 #correlation(X, Y)    
