@@ -7,7 +7,7 @@ import seaborn as sns
 import math
 
 
-from sklearn.preprocessing import minmax_scale
+from sklearn.preprocessing import MinMaxScaler
 
 
 
@@ -48,9 +48,13 @@ def create_dataset(land_use_option):
     X = X[0:low,:]
     Y = Y[0:low]
     X = np.array(X)
-    X = np.round(X,2)
-    Y = (np.array(np.round(Y,2)))
-    X = minmax_scale(X, axis=0)
+    X = np.round(X,3)
+    Y = (np.array(np.round(Y,3)))
+    
+        
+    #scaler = MinMaxScaler()
+    #X = scaler.fit_transform(X)
+    #X = np.round(X,2)
     
     return X,Y, num_sample_per_years
 
@@ -117,10 +121,15 @@ Factors= ["ed","frac","lpi","lsi","pland", "x", "y", "year"]
 # 1- create dataset 
 ##buildup =allb
 configuration_mode =['allb','allv','alls'] 
-X,Y, num_sample_per_years = create_dataset(configuration_mode[2])
+X,Y, num_sample_per_years = create_dataset(configuration_mode[0])
 
 box_plot(X)
-
+'''for i in range(len(Factors)):
+    fig3= plt.figure(figsize =(10, 4))
+    plt.boxplot(X[:,i])
+    plt.title("box plot " +str(Factors[i]))
+    
+'''
 fig2 = plt.figure(figsize =(10, 4))
 plt.boxplot(Y)
 plt.title("Temperture box plot")
@@ -138,12 +147,25 @@ for i in range(len(Factors)):
     print('Q1 75 percentile of the given data is, ', Q3)
  
     IQR = Q3 - Q1 
+    k = 1.5
     print('Interquartile range is', IQR)
-    low_lim = Q1 - 1.5 * IQR
-    up_lim = Q3 + 1.5 * IQR
+    low_lim = Q1 - k * IQR
+    up_lim = Q3 + k* IQR
+    
+    #fig3= plt.figure(figsize =(10, 4))
+    #plt.boxplot(X[:,i],vert= False)
+    #plt.axvline(low_lim, color ='r', label="low" )
+    #plt.axvline(up_lim, color ='r', label="up") 
+    #plt.title("box plot " +str(Factors[i]))
+    #plt.show()
+    
     outlier =[]
     temp = X[:,i]
-    for x in temp:
+    index_list=[]
+    for x,j in zip(temp,range(1357)):
        if ((x> up_lim) or (x<low_lim)):
           outlier.append(x)
+          index_list.append(j)
     print(' outlier in the dataset is', outlier)
+    print("number of outlier :", len(outlier))
+    print("outlier index:", index_list)
