@@ -52,14 +52,70 @@ def create_dataset(land_use_option):
     Y = (np.array(np.round(Y,3)))
     
         
-    #scaler = MinMaxScaler()
-    #X = scaler.fit_transform(X)
-    #X = np.round(X,2)
+    scaler = MinMaxScaler()
+    X = scaler.fit_transform(X)
+    X = np.round(X,2)
     
     return X,Y, num_sample_per_years
 
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+def oulier_removal(X,Y):
+    list_remove_index =[]
+    for i in range(len(Factors)):
+        Q1 = np.percentile(X[:,i], 25, interpolation = 'midpoint') 
+        Q2 = np.percentile(X[:,i], 50, interpolation = 'midpoint') 
+        Q3 = np.percentile(X[:,i], 75, interpolation = 'midpoint') 
+         
+        print('-------------------------Feature=', Factors[i],'---------------------------------')
+        print('Q1 25 percentile of the given data is, ', Q1)
+        print('Q1 50 percentile of the given data is, ', Q2)
+        print('Q1 75 percentile of the given data is, ', Q3)
+     
+        IQR = Q3 - Q1 
+        k = 1.5
+        print('Interquartile range is', IQR)
+        low_lim = Q1 - k * IQR
+        up_lim = Q3 + k* IQR
+        
+        #fig3= plt.figure(figsize =(10, 4))
+        #plt.boxplot(X[:,i],vert= False)
+        #plt.axvline(low_lim, color ='r', label="low" )
+        #plt.axvline(up_lim, color ='r', label="up") 
+        #plt.title("box plot " +str(Factors[i]))
+        #plt.show()
+        
+        outlier =[]
+        temp = X[:,i]
+        index_list=[]
+        for x,j in zip(temp,range(1357)):
+           if ((x> up_lim) or (x<low_lim)):
+              outlier.append(x)
+              index_list.append(j)
+        print(' outlier in the dataset is', outlier)
+        print("number of outlier :", len(outlier))
+        print("outlier index:", index_list)
+        list_remove_index = np.union1d(list_remove_index, index_list)
+    
+    
+    
+    NewX = []
+    NewY = []
+    for i in range(len(Y)):
+        if i in list_remove_index:
+             continue
+        else:
+             NewX.append( X[i,:])
+             NewY.append( Y[i])
+             
+    NewX = np.array(NewX)
+    NewY = np.array(NewY) 
 
+    return NewX, NewY         
+             
 
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 def box_plot(data):
     fig = plt.figure(figsize =(10, 4))
     ax = fig.add_subplot(111)
@@ -133,6 +189,20 @@ box_plot(X)
 fig2 = plt.figure(figsize =(10, 4))
 plt.boxplot(Y)
 plt.title("Temperture box plot")
+
+
+X,Y =oulier_removal(X,Y)
+box_plot(X)
+'''for i in range(len(Factors)):
+    fig3= plt.figure(figsize =(10, 4))
+    plt.boxplot(X[:,i])
+    plt.title("box plot " +str(Factors[i]))
+    
+'''
+fig2 = plt.figure(figsize =(10, 4))
+plt.boxplot(Y)
+plt.title("Temperture box plot")
+
 
 
 
