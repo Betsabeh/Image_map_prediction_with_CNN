@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import math
-
+import pdb
 
 from sklearn.preprocessing import minmax_scale
 from sklearn.preprocessing import MinMaxScaler 
@@ -207,25 +207,26 @@ def NN_model(hparam):
                                     units =num_hidden_units, activation = "relu"))
     
     
-    '''for i in range(hparam['num_layers']):
-        model.add(tf.keras.layers.Dense(units=num_hidden_units*(2**(i+1)), activation='relu', activity_regularizer=l1(0.001)))
+    #for i in range(hparam['num_layers']):
+     #   model.add(tf.keras.layers.Dense(units=num_hidden_units*(2**(i+1)), activation='relu', activity_regularizer=l2(0.001)))
         #model.add(tf.keras.layers.Dropout(0.5))'''
         
     
     #temp = num_hidden_units*(2**i)
     for i in range(hparam['num_layers']):
-        model.add(tf.keras.layers.Dense(units=num_hidden_units/(2**(i+1)), activation='relu', name = 'layer' + str(i),
-                                        activity_regularizer=(l2(0.005))))
-        #model.add(tf.keras.layers.Dropout(0.3))
+        model.add(tf.keras.layers.Dense(units=num_hidden_units/(2**(i+1)), activation='relu', name = 'layer' + str(i)
+                                     ,  activity_regularizer=(l2(0.005))))
+        #model.add(tf.keras.layers.Dropout(0.6))
         #model.add(tf.keras.layers.BatchNormalization())
         
     
     model.add(tf.keras.layers.Dense(units=1, activation = None))    
     model.compile(optimizer =tf.keras.optimizers.Adam(learning_rate=0.0005), 
-                  loss = tf.losses.MSE, 
+                  loss = tf.losses.MSE,
                   metrics= ["mse", tf.metrics.RootMeanSquaredError()])     
     
     model.summary()
+    #pdb.set_trace()
     
     return model
 #------------------------------------------------------------------------------
@@ -295,7 +296,7 @@ def hparam_setting(model_name):
                        "min_samples_split":10}
     
     if model_name =="NN":
-        model_hparams ={"input": input_dim, 'num_layers' :5, "num_nodes":64}
+        model_hparams ={"input": input_dim, 'num_layers' :2, "num_nodes":128}
         
     if model_name == 'KNN':
         model_hparams ={'n_neighbors':15}
@@ -500,14 +501,14 @@ input_dim = len(Factors)
 # 1- create dataset 
 ##buildup =allb
 configuration_mode =['allb','allv','alls'] 
-X,Y, num_sample_per_years = create_dataset(configuration_mode[0])
+X,Y, num_sample_per_years = create_dataset(configuration_mode[1])
 
 # 2- Cross validation
 model_names= ["RandomForest", "NN","SVR","xgboost","DTree", "KNN","Adaboost"]
-cross_validation(X, Y, num_folds =5 , model_name =model_names[2])
-
+cross_validation(X, Y, num_folds =5 , model_name =model_names[1])
+pdb.set_trace()
 # 3- Test 2021
-train_test_2021(X,Y,num_sample_per_years, model_names[2])
+train_test_2021(X,Y,num_sample_per_years, model_names[1])
 
 #feature_importance(X,Y, model_name =model_names[0])
 #correlation(X, Y)    
