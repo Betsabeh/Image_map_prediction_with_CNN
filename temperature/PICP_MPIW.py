@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Feb 28 10:53:29 2024
+
+@author: betsa
+"""
+
 
 """
 Created on Fri Jul 21 11:45:05 2023
@@ -16,6 +24,13 @@ import pdb
 from sklearn.preprocessing import minmax_scale
 from sklearn.preprocessing import MinMaxScaler
 
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.svm import SVR
+import xgboost as xg
+from xgboost import XGBRegressor
+from sklearn import tree
+from sklearn import neighbors
+from sklearn.ensemble import AdaBoostRegressor
 from sklearn.svm import SVR
 import xgboost as xg
 from xgboost import XGBRegressor
@@ -587,10 +602,10 @@ input_dim = len(Factors)
 configuration_mode =['allb','allv','alls']
 X,Y, num_sample_per_years = create_dataset(configuration_mode[0])
 #----------------------------------------------------
-PICP_MPIW(X,Y,'xgboost')
+model_names= ["RandomForest", "NN","SVR","xgboost","DTree", "KNN","Adaboost"]
+PICP_MPIW(X,Y,model_names[2])
 
 #------------------------------------------------------------
-df = Random_Forest_QuantileRegressor(X,Y,5)
-chart = plot_calibration_and_intervals(df)
-chart
-
+#df = Random_Forest_QuantileRegressor(X,Y,5)
+#chart = plot_calibration_and_intervals(df)
+#chart
