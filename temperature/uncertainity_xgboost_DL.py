@@ -35,7 +35,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score 
 
-import shap
+#import shap
 import properscoring as ps
 
 
@@ -512,14 +512,15 @@ def uncertainity(X,Y):
       params = {'objective': 'quantile', 'alpha': quantile}
       lgb_model = lgb.train(params=params, train_set=train_data, num_boost_round=100)
       pred = lgb_model.predict(X_test)
-    
-    quantile_predictions[quantile] = pred
+      quantile_predictions[quantile] = pred
+
     #lets check LightGBM RMSE
     mse_LGB = mean_squared_error(y_true = y_test, y_pred = lgb_prediction, squared=False)
     print("LGBOOST RMSE=", mse_LGB)
     empirical_quantiles = []
     for quantile in quantiles:
-       empirical = (quantile_predictions[quantile] >= y_test).mean()
+       temp = quantile_predictions[quantile]
+       empirical = ( temp>= y_test).mean()
        empirical_quantiles.append(empirical)
    
     pd.DataFrame({'quantile': quantiles, 'empirical_quantiles': empirical_quantiles})
@@ -550,8 +551,6 @@ def uncertainity(X,Y):
     nll_ngboost = -ngb_dist_pred.logpdf(y_test)
     print(f"NLL NGBoost: {nll_ngboost.mean()}")
     
-    #Compare NLL
-    print(np.log(stats.norm.pdf(y_test.values[0], loc = 0.477102760902954, scale = 0.0022844303231773434)))
     
     
     #* 3-Deep Learning Probabilistic Prediction
@@ -560,9 +559,9 @@ def uncertainity(X,Y):
     X_test_scaled = x_scaler.transform(X_test)
     
 
-    inputs = layers.Input(shape=((len(X_test.columns),)))
+    inputs = layers.Input(shape=(np.shape(X_test)[0],))
 
-    hidden1 = layers.Dense(100, activation = "relu", name = " dense_mean_1")(inputs)
+    hidden1 = layers.Dense(100, activation = "relu", name = "dense_mean_1")(inputs)
     hidden2 = layers.Dense(50, activation = "relu", name = "dense_mean_2")(hidden1)
     output_mean = layers.Dense(1, name = "mean_output")(hidden2) #expected mean
 
@@ -595,7 +594,7 @@ def uncertainity(X,Y):
     
     print(model_distr.evaluate(X_train_scaled,y_train, verbose=0))
     print(model_distr.evaluate(X_test_scaled, y_test, verbose=0))
-    dl_mean_prediction  = model_mean.predict(X_test_scaled).reshape(-1)
+    '''dl_mean_prediction  = model_mean.predict(X_test_scaled).reshape(-1)
     dl_sd_prediction = model_sd.predict(X_test_scaled).reshape(-1)
     mean_squared_error(y_true = y_test, y_pred=model_mean.predict(X_test_scaled), squared = False)
     nll_dl = []
@@ -668,7 +667,12 @@ def uncertainity(X,Y):
     comparison_df["crps_ngboost"] = comparison_df.apply(lambda x: ps.crps_gaussian(x["true"], mu = x["mean_ngboost"], sig = x["sd_ngboost"]), axis = 1)
     comparison_df["crps_dl"] = comparison_df.apply(lambda x: ps.crps_gaussian(x["true"], mu = x["mean_dl"], sig = x["sd_dl"]), axis = 1)
     
-    
+    crps_ngboost = ps.crps_gaussian(y_test, ngb_dist_pred.params["loc"], ngb_dist_pred.params["scale"]).mean()
+    crps_dl = ps.crps_gaussian(y_test, dl_mean_prediction, dl_sd_prediction).mean()
+
+    print(f"CRPS NGBoost: {comparison_df['crps_ngboost'].mean().round(4)}")
+    print(f"CRPS DL: {comparison_df['crps_dl'].mean().round(4)}")
+    '''
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------     
